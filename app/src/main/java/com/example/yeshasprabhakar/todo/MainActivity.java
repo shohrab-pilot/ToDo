@@ -32,6 +32,8 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -39,6 +41,7 @@ import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 import static java.util.Calendar.MINUTE;
 
@@ -47,8 +50,8 @@ public class MainActivity extends AppCompatActivity {
     public static final String NOTIFICATION_CHANNEL_ID = "10001";
     private final static String default_notification_channel_id = "default";
     private static final String TAG = "MainActivity";
-    private DatabaseHelper databaseHelper;
-    private ArrayList<DataModel> items;
+    private TodoViewModel mTodoViewModel; // Added ViewModel
+    private List<TodoItem> items; // Changed from ArrayList<DataModel> to List<TodoItem>
     private ItemAdapter itemsAdopter;
     private ListView itemsListView;
     private FloatingActionButton fab;
@@ -67,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
         }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Initialize ViewModel
+        mTodoViewModel = new ViewModelProvider(this).get(TodoViewModel.class);
 
         //set custom action bar
         getSupportActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
@@ -90,8 +96,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
-        databaseHelper = new DatabaseHelper(this);
+        // Removed: databaseHelper = new DatabaseHelper(this);
         fab = findViewById(R.id.fab);
         itemsListView = findViewById(R.id.itemsList);
 
@@ -101,7 +106,12 @@ public class MainActivity extends AppCompatActivity {
         FrameLayout emptyView = findViewById(R.id.emptyView);
         itemsListView.setEmptyView(emptyView);
 
-        populateListView();
+        // Initialize adapter with an empty list
+        items = new ArrayList<>(); // Initialize items list
+        itemsAdopter = new ItemAdapter(this, items); // Pass List<TodoItem>
+        itemsListView.setAdapter(itemsAdopter);
+
+        observeTodoList(); // Renamed and observing LiveData
         onFabClick();
         hideFab();
     }
@@ -145,32 +155,36 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "restartApp: Changed theme successfully");
     }
 
-    //Insert data to database
-    private void insertDataToDb(String title, String date, String time) {
-        boolean insertData = databaseHelper.insertData(title, date, time);
-        if (insertData) {
-            try {
-                populateListView();
-                toastMsg("Added successfully!");
-                Log.d(TAG, "insertDataToDb: Inserted data into database");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else
-            toastMsg("Something went wrong");
+    //Insert data using ViewModel
+    private void insertTodoItem(String title, String date, String time) {
+        TodoItem newTodo = new TodoItem(title, date, time);
+        mTodoViewModel.insert(newTodo);
+        toastMsg("Added successfully!");
+        Log.d(TAG, "insertTodoItem: Item passed to ViewModel for insertion.");
     }
 
-    //Populate listView with data from database
-    private void populateListView() {
-        try {
-            items = databaseHelper.getAllData();
-            itemsAdopter = new ItemAdapter(this, items);
-            itemsListView.setAdapter(itemsAdopter);
-            itemsAdopter.notifyDataSetChanged();
-            Log.d(TAG, "populateListView: Displaying data in list view");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    //Observe LiveData from ViewModel
+    private void observeTodoList() {
+        mTodoViewModel.getAllTodos().observe(this, new Observer<List<TodoItem>>() {
+            @Override
+            public void onChanged(List<TodoItem> todoItems) {
+                // Update the adapter with the new list of todoItems.
+                if (itemsAdopter != null) {
+                    itemsAdopter.setItems(todoItems); // Assumes ItemAdapter has setItems or similar
+                                                     // This method will need to be added to ItemAdapter
+                                                     // and should handle notifyDataSetChanged() internally or use ListAdapter.
+                }
+                // itemsAdopter.notifyDataSetChanged(); // Should be handled by setItems or ListAdapter
+            }
+        });
+        Log.d(TAG, "observeTodoList: Observer set up for LiveData");
+    }
+
+
+    public void deleteTodoItem(String name, String date, String time) {
+        mTodoViewModel.deleteByNameDateTime(name, date, time);
+        toastMsg("Item deleted");
+        Log.d(TAG, "deleteTodoItem: Delete request sent to ViewModel for " + name);
     }
 
     //Hide fab on list scroll
@@ -298,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
                 String time = timeText.getText().toString();
                 if (title.length() != 0) {
                     try {
-                        insertDataToDb(title, date, time);
+                        insertTodoItem(title, date, time); // Changed to insertTodoItem
                         scheduleNotification(getNotification(title), cal.getTimeInMillis());
                     } catch (Exception e) {
                         e.printStackTrace();
