@@ -25,19 +25,21 @@ import android.widget.TextView
 import android.widget.TimePicker
 import android.widget.Toast
 import android.widget.ToggleButton
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModelProvider
+import com.example.yeshasprabhakar.todo.ui.TodoApp
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.text.DateFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale // Added for SimpleDateFormat consistency
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "10001"
@@ -46,57 +48,61 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var todoViewModel: TodoViewModel
-    private var items: MutableList<TodoItem> = mutableListOf() // Use MutableList
-    private lateinit var itemsAdapter: ItemAdapter // Corrected from itemsAdopter
-    private lateinit var itemsListView: ListView
-    private lateinit var fab: FloatingActionButton
-    private lateinit var toggleTheme: ToggleButton
-    private lateinit var sharedPreferences: SharedPref // Already Kotlin
+    // private var items: MutableList<TodoItem> = mutableListOf() // Removed: Handled by Compose
+    // private lateinit var itemsAdapter: ItemAdapter // Removed: Handled by Compose
+    // private lateinit var itemsListView: ListView // Removed: Handled by Compose
+    // private lateinit var fab: FloatingActionButton // Removed: Handled by Compose
+    // private lateinit var toggleTheme: ToggleButton // Removed
+    // private lateinit var sharedPreferences: SharedPref // Instance will be created in TodoApp
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        sharedPreferences = SharedPref(this)
+        // sharedPreferences = SharedPref(this) // Moved to TodoApp
 
-        if (sharedPreferences.loadNightModeState()) {
-            setTheme(R.style.DarkTheme)
-        } else {
-            setTheme(R.style.LightTheme)
-        }
+        // Theme setting is now handled by TodoTheme within TodoApp
+        // if (sharedPreferences.loadNightModeState()) {
+        //     setTheme(R.style.DarkTheme)
+        // } else {
+        //     setTheme(R.style.LightTheme)
+        // }
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContent {
+            TodoApp() // Call the main Composable
+        }
 
         todoViewModel = ViewModelProvider(this)[TodoViewModel::class.java] // Kotlin property access
 
-        supportActionBar?.apply {
-            setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM)
-            setCustomView(R.layout.actionbar)
-        }
+        // ActionBar and theme toggle are handled by Compose now
+        // supportActionBar?.apply {
+        //     setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM)
+        //     setCustomView(R.layout.actionbar)
+        // }
 
-        toggleTheme = findViewById(R.id.themeActionButton)
-        toggleTheme.isChecked = sharedPreferences.loadNightModeState()
-        toggleTheme.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferences.setNightModeState(isChecked)
-            restartApp()
-        }
+        // toggleTheme = findViewById(R.id.themeActionButton)
+        // toggleTheme.isChecked = sharedPreferences.loadNightModeState()
+        // toggleTheme.setOnCheckedChangeListener { _, isChecked ->
+        //     sharedPreferences.setNightModeState(isChecked)
+        //     restartApp()
+        // }
 
-        fab = findViewById(R.id.fab)
-        itemsListView = findViewById(R.id.itemsList)
+        // fab = findViewById(R.id.fab) // To be replaced with Compose FAB
+        // itemsListView = findViewById(R.id.itemsList) // To be replaced with Compose List
 
-        val emptyTextView: TextView = findViewById(R.id.emptyTextView)
-        emptyTextView.text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Html.fromHtml(getString(R.string.listEmptyText), Html.FROM_HTML_MODE_LEGACY)
-        } else {
-            @Suppress("DEPRECATION")
-            Html.fromHtml(getString(R.string.listEmptyText))
-        }
-        val emptyView: FrameLayout = findViewById(R.id.emptyView)
-        itemsListView.emptyView = emptyView
+        // val emptyTextView: TextView = findViewById(R.id.emptyTextView) // Handled in Compose
+        // emptyTextView.text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        //     Html.fromHtml(getString(R.string.listEmptyText), Html.FROM_HTML_MODE_LEGACY)
+        // } else {
+        //     @Suppress("DEPRECATION")
+        //     Html.fromHtml(getString(R.string.listEmptyText))
+        // }
+        // val emptyView: FrameLayout = findViewById(R.id.emptyView) // Handled in Compose
+        // itemsListView.emptyView = emptyView
 
-        itemsAdapter = ItemAdapter(this, items) // Pass mutable list
-        itemsListView.adapter = itemsAdapter
+        // itemsAdapter = ItemAdapter(this, items) // Removed
+        // itemsListView.adapter = itemsListView.adapter // Removed
 
-        observeTodoList()
-        onFabClick()
-        hideFab()
+        // observeTodoList() // Removed: Handled by Compose state in TodoApp
+        // onFabClick() // Removed: Handled by Compose FAB
+        // hideFab() // Removed: Handled by Compose scroll state
     }
 
     private fun scheduleNotification(notification: Notification, delay: Long) {
@@ -146,7 +152,8 @@ class MainActivity : AppCompatActivity() {
         return builder.build()
     }
 
-    private fun restartApp() {
+    // Theme changes will trigger a restart of the activity to re-apply the theme.
+    fun restartApp() {
         val i = Intent(applicationContext, MainActivity::class.java)
         startActivity(i)
         finish()
@@ -160,42 +167,46 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "insertTodoItem: Item passed to ViewModel for insertion.")
     }
 
-    private fun observeTodoList() {
-        todoViewModel.allTodos.observe(this) { todoItems -> // Using trailing lambda
-            itemsAdapter.setItems(todoItems ?: emptyList()) 
-        }
-        Log.d(TAG, "observeTodoList: Observer set up for LiveData")
-    }
+    // Removed: Handled by Compose state in TodoApp
+    // private fun observeTodoList() {
+    //     todoViewModel.allTodos.observe(this) { todoItems -> // Using trailing lambda
+    //         itemsAdapter.setItems(todoItems ?: emptyList())
+    //     }
+    //     Log.d(TAG, "observeTodoList: Observer set up for LiveData")
+    // }
 
-    fun deleteTodoItem(name: String, date: String, time: String) { 
+    fun deleteTodoItem(name: String, date: String, time: String) {
         todoViewModel.deleteByNameDateTime(name, date, time)
         toastMsg("Item deleted")
         Log.d(TAG, "deleteTodoItem: Delete request sent to ViewModel for $name")
     }
 
-    private fun hideFab() {
-        itemsListView.setOnScrollListener(object : AbsListView.OnScrollListener {
-            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
-                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
-                    fab.show()
-                } else {
-                    fab.hide()
-                }
-            }
+    // FAB visibility will be handled in Compose
+    // private fun hideFab() {
+    //     itemsListView.setOnScrollListener(object : AbsListView.OnScrollListener {
+    //         override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
+    //             if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+    //                 fab.show()
+    //             } else {
+    //                 fab.hide()
+    //             }
+    //         }
+    //
+    //         override fun onScroll(view: AbsListView?, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
+    //             // Not used
+    //         }
+    //     })
+    // }
 
-            override fun onScroll(view: AbsListView?, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
-                // Not used
-            }
-        })
-    }
+    // FAB click will be handled in Compose
+    // private fun onFabClick() {
+    //     fab.setOnClickListener {
+    //         showAddDialog()
+    //         Log.d(TAG, "onFabClick: Opened edit dialog")
+    //     }
+    // }
 
-    private fun onFabClick() {
-        fab.setOnClickListener {
-            showAddDialog()
-            Log.d(TAG, "onFabClick: Opened edit dialog")
-        }
-    }
-
+    // Dialog will be a Composable
     private fun showAddDialog() {
         val dialogBuilder = AlertDialog.Builder(this)
         val inflater = this.layoutInflater
